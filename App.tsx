@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { CameraScanner } from './components/CameraScanner';
 import { HistoryItem } from './components/HistoryItem';
-import { Trophy, Star, Sparkles, Camera, Trash2, History, Medal, Award, Crown, Zap, LayoutGrid, Home as HomeIcon } from 'lucide-react';
+import { Trophy, Star, Sparkles, Camera, Trash2, History, Medal, Award, Crown, Zap, LayoutGrid, Home as HomeIcon, Download } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 enum AppState {
@@ -29,6 +29,8 @@ interface Badge {
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>(AppState.HOME);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBtn, setShowInstallBtn] = useState(false);
   
   // Initialize history from localStorage
   const [history, setHistory] = useState<RewardHistory[]>(() => {
@@ -51,6 +53,27 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('shamal-rewards-history', JSON.stringify(history));
   }, [history]);
+
+  // PWA Install Prompt Listener
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBtn(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstallBtn(false);
+    }
+    setDeferredPrompt(null);
+  };
 
   const totalStars = history.reduce((acc, curr) => acc + curr.stars, 0);
   
@@ -209,6 +232,17 @@ export default function App() {
               </div>
             </div>
 
+            {/* Install Button (if available) */}
+            {showInstallBtn && (
+              <button
+                onClick={handleInstallClick}
+                className="w-full max-w-xs bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center gap-2 animate-pop hover:bg-blue-700 transition-colors"
+              >
+                <Download size={20} />
+                <span>تحميل التطبيق على الجهاز</span>
+              </button>
+            )}
+
             {/* Action Button */}
             <button
               onClick={() => setAppState(AppState.CAMERA)}
@@ -253,16 +287,16 @@ export default function App() {
             <div className="w-full mt-auto pt-12 space-y-6 px-2">
               {/* Signatures Section */}
               <div className="flex justify-between items-end w-full">
-                  {/* Academic Deputy (Right in RTL) */}
-                  <div className="text-right border-r-4 border-purple-500 pr-3 py-2 bg-white/40 backdrop-blur-sm rounded-l-2xl pl-4 shadow-sm animate-fade-in transform hover:scale-105 transition-transform">
-                      <p className="text-purple-900 text-xs font-bold mb-1">النائبة الأكاديمية</p>
-                      <p className="text-purple-900 font-black text-sm sm:text-base">لولوة السادة</p>
-                  </div>
-
-                  {/* Principal (Left in RTL) */}
-                  <div className="text-right border-l-4 border-pink-600 pl-3 py-2 bg-white/40 backdrop-blur-sm rounded-r-2xl pr-4 shadow-sm animate-fade-in delay-100 transform hover:scale-105 transition-transform">
+                  {/* Principal (Right in RTL) */}
+                  <div className="text-right border-r-4 border-pink-600 pr-3 py-2 bg-white/40 backdrop-blur-sm rounded-l-2xl pl-4 shadow-sm animate-fade-in delay-100 transform hover:scale-105 transition-transform">
                       <p className="text-pink-900 text-xs font-bold mb-1">مديرة المدرسة</p>
                       <p className="text-pink-900 font-black text-sm sm:text-base">مريم مبارك الحسيني</p>
+                  </div>
+
+                  {/* Academic Deputy (Left in RTL) */}
+                  <div className="text-right border-l-4 border-purple-500 pl-3 py-2 bg-white/40 backdrop-blur-sm rounded-r-2xl pr-4 shadow-sm animate-fade-in transform hover:scale-105 transition-transform">
+                      <p className="text-purple-900 text-xs font-bold mb-1">النائبة الأكاديمية</p>
+                      <p className="text-purple-900 font-black text-sm sm:text-base">لولوة السادة</p>
                   </div>
               </div>
 

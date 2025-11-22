@@ -1,0 +1,22 @@
+{
+  "name": "تعزيز - مدرسة الشمال",
+  "short_name": "تعزيز",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#fce7f3",
+  "theme_color": "#fce7f3",
+  "description": "تطبيق تعزيز للطالبات بمدرسة الشمال الابتدائية بنات",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2903/2903556.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2903/2903556.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
