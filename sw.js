@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'shamal-rewards-v9';
+const CACHE_NAME = 'shamal-rewards-v10';
 const ICON_URL = 'https://cdn-icons-png.flaticon.com/512/2903/2903556.png';
 
 // List of assets to pre-cache
@@ -20,7 +20,7 @@ const CACHE_DOMAINS = [
 ];
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // Force activation
+  self.skipWaiting(); // Force activation immediately
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_URLS);
@@ -34,11 +34,12 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
+            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
-    }).then(() => self.clients.claim()) // Take control immediately
+    }).then(() => self.clients.claim()) // Take control of all clients immediately
   );
 });
 
@@ -47,7 +48,7 @@ self.addEventListener('fetch', (event) => {
   const isLocal = url.origin === self.location.origin;
   const isHTML = event.request.mode === 'navigate' || url.pathname.endsWith('.html');
 
-  // Strategy 1: Network First for HTML/Navigation (Ensure fresh app updates)
+  // STRATEGY 1: Network First for HTML/App Shell (Ensures updates are seen immediately)
   if (isLocal && isHTML) {
     event.respondWith(
       fetch(event.request)
@@ -64,11 +65,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy 2: Stale-While-Revalidate for other assets (Fast load, update in background)
+  // STRATEGY 2: Stale-While-Revalidate for Assets (Libraries, Icons, etc.)
+  // Serves from cache for speed, then updates cache in background
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
-        // Cache only valid responses from allowed domains or local
         if (networkResponse && networkResponse.status === 200) {
           const isAllowedDomain = CACHE_DOMAINS.some(d => url.hostname === d);
           if (isLocal || isAllowedDomain) {
@@ -80,7 +81,7 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       }).catch(() => {
-        // Network failed, nothing to do here
+        // Network failed, nothing to do
       });
 
       return cachedResponse || fetchPromise;

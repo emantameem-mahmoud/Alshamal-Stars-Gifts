@@ -66,22 +66,23 @@ export default function App() {
     };
     window.addEventListener('beforeinstallprompt', installHandler);
 
-    // Check for Service Worker updates
+    // Check if service worker is waiting to take control (update available)
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        // This fires when the service worker controlling the page changes
-        // We can trigger a reload here or notify the user
-        // But usually, we want to wait for the user to confirm reload
-      });
-      
-      // Poll for updates manually occasionally
-      const interval = setInterval(() => {
-        navigator.serviceWorker.ready.then(registration => {
-          registration.update();
-        });
-      }, 60 * 60 * 1000); // Check every hour
-      
-      return () => clearInterval(interval);
+       navigator.serviceWorker.ready.then(registration => {
+         if (registration.waiting) {
+           setUpdateAvailable(true);
+         }
+         registration.addEventListener('updatefound', () => {
+           const newWorker = registration.installing;
+           if (newWorker) {
+             newWorker.addEventListener('statechange', () => {
+               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                 setUpdateAvailable(true);
+               }
+             });
+           }
+         });
+       });
     }
 
     return () => window.removeEventListener('beforeinstallprompt', installHandler);
@@ -98,6 +99,11 @@ export default function App() {
   };
 
   const reloadPage = () => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        registrations.forEach(registration => registration.update());
+      });
+    }
     window.location.reload();
   };
 
@@ -109,7 +115,6 @@ export default function App() {
 
   useEffect(() => {
     if (totalStars > prevStarsRef.current) {
-      // Trigger confetti from star icon position
       if (starCountRef.current) {
         const rect = starCountRef.current.getBoundingClientRect();
         const x = (rect.left + rect.width / 2) / window.innerWidth;
@@ -205,77 +210,80 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden bg-gradient-to-br from-pink-100 via-purple-100 to-teal-50 font-tajawal">
+    <div className="h-[100dvh] w-screen flex flex-col relative overflow-hidden bg-gradient-to-br from-pink-100 via-purple-100 to-teal-50 font-tajawal text-gray-800">
       
       {/* Update Notification Toast */}
       {updateAvailable && (
-        <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-50 animate-pop">
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-pop w-[90%] max-w-sm">
           <button 
             onClick={reloadPage}
-            className="bg-black/80 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 backdrop-blur-md border border-white/20"
+            className="w-full bg-black/80 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between backdrop-blur-md border border-white/20"
           >
-            <RefreshCw size={18} className="animate-spin" />
-            <span>تحديث جديد متاح! اضغطي للتحديث</span>
+            <div className="flex items-center gap-2">
+              <RefreshCw size={18} className="animate-spin" />
+              <span className="text-sm font-bold">تحديث جديد متوفر</span>
+            </div>
+            <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold">تحديث الآن</span>
           </button>
         </div>
       )}
 
       {/* Header */}
-      <header className="glass-panel sticky top-0 z-50 px-3 py-4 shadow-md transition-all duration-300">
+      <header className="glass-panel sticky top-0 z-40 px-3 py-3 shadow-sm shrink-0">
         <div className="relative flex items-center justify-between w-full">
-          {/* Logo (Right in RTL) */}
+          {/* Logo */}
           <div className="bg-gradient-to-br from-pink-500 to-purple-600 p-2 rounded-full text-white shadow-md shrink-0 z-10">
-            <Sparkles size={24} />
+            <Sparkles size={20} />
           </div>
 
-          {/* Title (Absolute Center) */}
+          {/* Title */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-            <h1 className="font-black text-pink-900 text-2xl sm:text-4xl leading-tight text-center drop-shadow-sm w-full px-14">
-              مدرسة الشمال الابتدائية بنات
+            <h1 className="font-black text-pink-900 text-lg sm:text-xl leading-tight text-center w-full px-12 truncate">
+              مدرسة الشمال الابتدائية
             </h1>
           </div>
 
-          {/* Star Counter (Left in RTL) */}
+          {/* Star Counter */}
           <div 
             ref={starCountRef}
-            className="flex items-center gap-1 bg-white/80 px-3 py-1 rounded-full border border-yellow-200 shadow-sm transition-transform active:scale-95 shrink-0 z-10"
+            className="flex items-center gap-1 bg-white/80 px-3 py-1 rounded-full border border-yellow-200 shadow-sm shrink-0 z-10"
           >
-            <Star className="text-yellow-500 fill-yellow-500 drop-shadow-sm" size={20} />
-            <span className="font-bold text-yellow-800 text-xl">{totalStars}</span>
+            <Star className="text-yellow-500 fill-yellow-500 drop-shadow-sm" size={18} />
+            <span className="font-bold text-yellow-800 text-lg">{totalStars}</span>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col w-full max-w-md mx-auto p-4 gap-6 pb-24">
+      {/* Main Content - Scrollable */}
+      <main className="flex-1 overflow-y-auto overflow-x-hidden w-full max-w-md mx-auto p-4 pb-28 no-scrollbar scroll-smooth">
         
         {appState === AppState.HOME && (
-          <div className="flex flex-col items-center gap-6 py-2 min-h-full">
+          <div className="flex flex-col items-center gap-5 min-h-full">
             
             {/* Hero Section */}
-            <div className="relative w-full mt-2">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-56 h-56 bg-pink-400/20 rounded-full blur-3xl animate-pulse"></div>
-              <div className="relative bg-white/90 backdrop-blur-sm p-6 rounded-[2rem] shadow-xl flex flex-col items-center text-center gap-3 border-2 border-white ring-4 ring-pink-100/50 animate-float">
+            <div className="relative w-full mt-2 shrink-0">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-pink-400/20 rounded-full blur-3xl animate-pulse"></div>
+              <div className="relative bg-white/80 backdrop-blur-sm p-5 rounded-[2rem] shadow-lg flex flex-col items-center text-center gap-2 border border-white ring-4 ring-pink-100/50 animate-float">
                 <div className="relative">
-                  <Trophy size={72} className="text-yellow-500 drop-shadow-md" />
-                  <Star size={32} className="text-pink-400 absolute -top-2 -right-4 animate-bounce" />
+                  <Trophy size={60} className="text-yellow-500 drop-shadow-md" />
+                  <Star size={24} className="text-pink-400 absolute -top-2 -right-4 animate-bounce" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-purple-600 mb-1">
+                  <h2 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-purple-600 mb-1">
                     أهلاً بمبدعات الشمال
                   </h2>
-                  <p className="text-gray-600 text-sm leading-relaxed font-medium">
-                    وجهي الكاميرا نحو الطالبة أو العمل المميز<br/>للحصول على نجوم التميز
+                  <p className="text-gray-500 text-xs font-medium">
+                    وجهي الكاميرا نحو الطالبة للحصول على النجوم
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Install Button (if available) */}
+            {/* Install Button */}
             {showInstallBtn && (
               <button
                 onClick={handleInstallClick}
-                className="w-full max-w-xs bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center gap-2 animate-pop hover:bg-blue-700 transition-colors"
+                className="w-full max-w-xs bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center gap-2 animate-pop hover:bg-blue-700 transition-colors shrink-0"
               >
                 <Download size={20} />
                 <span>تحميل التطبيق على الجهاز</span>
@@ -285,26 +293,26 @@ export default function App() {
             {/* Action Button */}
             <button
               onClick={() => setAppState(AppState.CAMERA)}
-              className="group relative w-full max-w-xs bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold py-6 px-8 rounded-2xl shadow-[0_10px_20px_rgba(219,39,119,0.3)] transform transition-all hover:scale-105 hover:shadow-[0_15px_25px_rgba(219,39,119,0.4)] active:scale-95 flex items-center justify-center gap-4 overflow-hidden"
+              className="group relative w-full max-w-xs bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold py-5 px-6 rounded-2xl shadow-xl shadow-pink-500/20 transform transition-all active:scale-95 flex items-center justify-center gap-3 overflow-hidden shrink-0"
             >
               <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-              <Camera size={36} className="group-hover:rotate-12 transition-transform relative z-10" />
-              <span className="text-3xl relative z-10">بدء التعزيز</span>
+              <Camera size={32} className="relative z-10" />
+              <span className="text-2xl relative z-10">بدء التعزيز</span>
             </button>
 
             {/* History Section */}
             {history.length > 0 && (
-              <div className="w-full animate-pop mt-4">
+              <div className="w-full animate-pop mt-2">
                 <div className="flex justify-between items-center mb-3 px-2">
-                  <div className="flex items-center gap-2 text-pink-900 font-bold">
-                    <History size={20} />
+                  <div className="flex items-center gap-2 text-pink-900 font-bold text-sm">
+                    <History size={16} />
                     <h3>سجل التميز</h3>
                   </div>
                   <button 
                     onClick={handleClearHistory}
-                    className="text-xs text-red-500 hover:bg-red-50 px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                    className="text-[10px] text-red-500 hover:bg-red-50 px-2 py-1 rounded-md transition-colors flex items-center gap-1"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={12} />
                     مسح الكل
                   </button>
                 </div>
@@ -322,40 +330,31 @@ export default function App() {
               </div>
             )}
 
-            {/* School Info Footer */}
-            <div className="w-full mt-auto pt-12 space-y-6 px-2">
-              {/* Signatures Section */}
+            {/* Footer Information */}
+            <div className="w-full mt-auto pt-8 space-y-6 px-1">
+              {/* Signatures */}
               <div className="flex justify-between items-end w-full">
-                  {/* Principal (Right in RTL) */}
-                  <div className="text-right border-r-4 border-pink-600 pr-3 py-2 bg-white/40 backdrop-blur-sm rounded-l-2xl pl-4 shadow-sm animate-fade-in delay-100 transform hover:scale-105 transition-transform">
-                      <p className="text-pink-900 text-xs font-bold mb-1">مديرة المدرسة</p>
-                      <p className="text-pink-900 font-black text-sm sm:text-base">مريم مبارك الحسيني</p>
+                  <div className="text-right border-r-2 border-pink-500 pr-3 py-1">
+                      <p className="text-pink-900 text-[10px] font-bold">مديرة المدرسة</p>
+                      <p className="text-pink-900 font-black text-xs">مريم الحسيني</p>
                   </div>
-
-                  {/* Academic Deputy (Left in RTL) */}
-                  <div className="text-right border-l-4 border-purple-500 pl-3 py-2 bg-white/40 backdrop-blur-sm rounded-r-2xl pr-4 shadow-sm animate-fade-in transform hover:scale-105 transition-transform">
-                      <p className="text-purple-900 text-xs font-bold mb-1">النائبة الأكاديمية</p>
-                      <p className="text-purple-900 font-black text-sm sm:text-base">لولوة السادة</p>
+                  <div className="text-right border-l-2 border-purple-500 pl-3 py-1">
+                      <p className="text-purple-900 text-[10px] font-bold">النائبة الأكاديمية</p>
+                      <p className="text-purple-900 font-black text-xs">لولوة السادة</p>
                   </div>
               </div>
 
-              {/* Vision & Credits (Center) */}
-              <div className="text-center space-y-3 animate-fade-in delay-100">
-                  <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 shadow-md border border-white/60 inline-block w-full transform hover:-translate-y-1 transition-transform">
-                       <p className="text-pink-800 font-black text-base sm:text-lg flex items-center justify-center gap-3">
-                          <Sparkles size={16} className="text-pink-500 animate-pulse"/>
-                          الرؤية : متعلم ريادي تنمية مستدامة
-                          <Sparkles size={16} className="text-pink-500 animate-pulse"/>
+              {/* Credits */}
+              <div className="text-center space-y-2 pb-4">
+                  <div className="inline-block px-3 py-1 bg-white/50 rounded-full border border-white/60">
+                       <p className="text-pink-800 font-bold text-xs flex items-center gap-1">
+                          <Sparkles size={10} className="text-pink-500"/>
+                          متعلم ريادي تنمية مستدامة
                        </p>
                   </div>
-                  <div className="flex justify-center items-center gap-2 text-pink-700/70 text-[10px]">
-                     <Info size={12} />
+                  <div className="text-[10px] text-gray-400 flex flex-col items-center gap-1">
                      <span>الإصدار {APP_VERSION}</span>
-                  </div>
-                  <div className="inline-block px-4 py-1 bg-pink-100/50 rounded-full">
-                    <p className="text-pink-700 text-xs font-bold">
-                         إعداد وتطوير/ إيمان محمود
-                    </p>
+                     <span>إعداد: إيمان محمود</span>
                   </div>
               </div>
             </div>
@@ -364,28 +363,28 @@ export default function App() {
         )}
 
         {appState === AppState.ACHIEVEMENTS && (
-          <div className="animate-fade-in py-4">
-            <h2 className="text-2xl font-black text-pink-900 mb-6 flex items-center gap-2">
-              <LayoutGrid className="text-pink-600" />
+          <div className="animate-fade-in py-2">
+            <h2 className="text-xl font-black text-pink-900 mb-4 flex items-center gap-2">
+              <LayoutGrid className="text-pink-600" size={20} />
               الإنجازات والأوسمة
             </h2>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               {getBadges().map((badge) => (
                 <div 
                   key={badge.id}
-                  className={`relative p-4 rounded-2xl border flex flex-col items-center text-center transition-all duration-300 ${badge.unlocked ? 'bg-white border-white shadow-lg scale-100' : 'bg-white/40 border-white/20 grayscale opacity-70 scale-95'}`}
+                  className={`relative p-3 rounded-xl border flex flex-col items-center text-center transition-all ${badge.unlocked ? 'bg-white border-white shadow-sm' : 'bg-white/40 border-white/20 grayscale opacity-70'}`}
                 >
                    {!badge.unlocked && (
-                     <div className="absolute inset-0 bg-gray-100/50 rounded-2xl z-10 flex items-center justify-center backdrop-blur-[1px]">
-                       <div className="bg-gray-800/10 p-2 rounded-full"><span className="text-xs font-bold text-gray-500">مغلق</span></div>
+                     <div className="absolute inset-0 bg-gray-100/30 rounded-xl z-10 flex items-center justify-center">
+                       <div className="bg-gray-800/10 px-2 py-1 rounded text-[10px] font-bold text-gray-500">مغلق</div>
                      </div>
                    )}
-                   <div className={`w-12 h-12 rounded-full ${badge.color} flex items-center justify-center shadow-md mb-3 ${badge.unlocked ? 'animate-float' : ''}`}>
+                   <div className={`w-10 h-10 rounded-full ${badge.color} flex items-center justify-center shadow-inner mb-2 ${badge.unlocked ? 'animate-float' : ''}`}>
                      {badge.icon}
                    </div>
-                   <h3 className="font-bold text-gray-800">{badge.title}</h3>
-                   <p className="text-xs text-gray-500 mt-1">{badge.desc}</p>
+                   <h3 className="font-bold text-gray-800 text-sm">{badge.title}</h3>
+                   <p className="text-[10px] text-gray-500 mt-0.5">{badge.desc}</p>
                 </div>
               ))}
             </div>
@@ -395,43 +394,41 @@ export default function App() {
       </main>
 
       {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-white/50 pb-safe px-6 py-3 flex justify-around items-center z-40 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-white/60 px-6 pt-2 pb-safe flex justify-around items-end z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] h-[85px]">
         <button 
           onClick={() => setAppState(AppState.HOME)}
-          className={`flex flex-col items-center gap-1 transition-all ${appState === AppState.HOME ? 'text-pink-600 -translate-y-2 scale-110' : 'text-gray-400'}`}
+          className={`flex flex-col items-center gap-1 pb-4 transition-all ${appState === AppState.HOME ? 'text-pink-600' : 'text-gray-400'}`}
         >
-          <div className={`p-2 rounded-full ${appState === AppState.HOME ? 'bg-pink-100' : ''}`}>
-            <HomeIcon size={24} />
-          </div>
+          <HomeIcon size={24} strokeWidth={appState === AppState.HOME ? 2.5 : 2} />
           <span className="text-[10px] font-bold">الرئيسية</span>
         </button>
 
-        <div className="relative -top-8">
+        <div className="relative -top-6">
            <button 
              onClick={() => setAppState(AppState.CAMERA)}
-             className="bg-gradient-to-tr from-pink-500 to-purple-600 text-white p-4 rounded-full shadow-lg shadow-pink-500/40 transform transition-transform active:scale-95 border-4 border-pink-50"
+             className="bg-gradient-to-tr from-pink-500 to-purple-600 text-white w-16 h-16 rounded-full shadow-lg shadow-pink-500/40 flex items-center justify-center transform transition-transform active:scale-95 border-4 border-white"
            >
-             <Camera size={32} />
+             <Camera size={28} />
            </button>
         </div>
 
         <button 
           onClick={() => setAppState(AppState.ACHIEVEMENTS)}
-          className={`flex flex-col items-center gap-1 transition-all ${appState === AppState.ACHIEVEMENTS ? 'text-pink-600 -translate-y-2 scale-110' : 'text-gray-400'}`}
+          className={`flex flex-col items-center gap-1 pb-4 transition-all ${appState === AppState.ACHIEVEMENTS ? 'text-pink-600' : 'text-gray-400'}`}
         >
-          <div className={`p-2 rounded-full ${appState === AppState.ACHIEVEMENTS ? 'bg-pink-100' : ''}`}>
-            <Award size={24} />
-          </div>
+          <Award size={24} strokeWidth={appState === AppState.ACHIEVEMENTS ? 2.5 : 2} />
           <span className="text-[10px] font-bold">إنجازاتي</span>
         </button>
       </nav>
       
-      {/* Global Overlay for Camera State */}
+      {/* Global Overlay for Camera State (Fullscreen) */}
       {appState === AppState.CAMERA && (
-        <CameraScanner 
-          onClose={() => setAppState(AppState.HOME)} 
-          onReward={handleAddReward} 
-        />
+        <div className="fixed inset-0 z-[60] bg-black">
+          <CameraScanner 
+            onClose={() => setAppState(AppState.HOME)} 
+            onReward={handleAddReward} 
+          />
+        </div>
       )}
 
     </div>
