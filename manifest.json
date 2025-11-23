@@ -1,7 +1,9 @@
 {
+  "id": "shamal-rewards-app",
   "name": "تعزيز - مدرسة الشمال",
   "short_name": "تعزيز",
-  "start_url": ".",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#fce7f3",
   "theme_color": "#fce7f3",

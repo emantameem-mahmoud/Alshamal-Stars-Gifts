@@ -1,21 +1,33 @@
-const CACHE_NAME = 'shamal-rewards-v1';
-const OFFLINE_URL = 'index.html';
 
-// Install event: Cache core assets
+const CACHE_NAME = 'shamal-rewards-v9';
+const ICON_URL = 'https://cdn-icons-png.flaticon.com/512/2903/2903556.png';
+
+// List of assets to pre-cache
+const PRECACHE_URLS = [
+  './',
+  './index.html',
+  './manifest.json',
+  ICON_URL
+];
+
+// Domains allowed for caching (external fonts, icons, libraries)
+const CACHE_DOMAINS = [
+  'cdn.tailwindcss.com',
+  'aistudiocdn.com',
+  'fonts.googleapis.com',
+  'fonts.gstatic.com',
+  'cdn-icons-png.flaticon.com'
+];
+
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // Force new service worker to activate immediately
+  self.skipWaiting(); // Force activation
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll([
-        './',
-        './index.html',
-        './manifest.json'
-      ]);
+      return cache.addAll(PRECACHE_URLS);
     })
   );
 });
 
-// Activate event: Clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -26,32 +38,52 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => self.clients.claim()) // Take control of all clients immediately
+    }).then(() => self.clients.claim()) // Take control immediately
   );
 });
 
-// Fetch event: Network First strategy (try network, fall back to cache)
-// This ensures the user always gets the latest version if online
 self.addEventListener('fetch', (event) => {
-  // Skip cross-origin requests
-  if (!event.request.url.startsWith(self.location.origin)) return;
+  const url = new URL(event.request.url);
+  const isLocal = url.origin === self.location.origin;
+  const isHTML = event.request.mode === 'navigate' || url.pathname.endsWith('.html');
 
+  // Strategy 1: Network First for HTML/Navigation (Ensure fresh app updates)
+  if (isLocal && isHTML) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          return caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, networkResponse.clone());
+            return networkResponse;
+          });
+        })
+        .catch(() => {
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
+  // Strategy 2: Stale-While-Revalidate for other assets (Fast load, update in background)
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // If we got a valid response, clone it and update the cache
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response;
+    caches.match(event.request).then((cachedResponse) => {
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        // Cache only valid responses from allowed domains or local
+        if (networkResponse && networkResponse.status === 200) {
+          const isAllowedDomain = CACHE_DOMAINS.some(d => url.hostname === d);
+          if (isLocal || isAllowedDomain) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
         }
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
-        return response;
-      })
-      .catch(() => {
-        // If offline, try to serve from cache
-        return caches.match(event.request);
-      })
+        return networkResponse;
+      }).catch(() => {
+        // Network failed, nothing to do here
+      });
+
+      return cachedResponse || fetchPromise;
+    })
   );
 });

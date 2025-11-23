@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { CameraScanner } from './components/CameraScanner';
 import { HistoryItem } from './components/HistoryItem';
-import { Trophy, Star, Sparkles, Camera, Trash2, History, Medal, Award, Crown, Zap, LayoutGrid, Home as HomeIcon, Download } from 'lucide-react';
+import { Trophy, Star, Sparkles, Camera, Trash2, History, Medal, Award, Crown, Zap, LayoutGrid, Home as HomeIcon, Download, Info, RefreshCw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 enum AppState {
@@ -31,6 +32,8 @@ export default function App() {
   const [appState, setAppState] = useState<AppState>(AppState.HOME);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const APP_VERSION = "2.1.0";
   
   // Initialize history from localStorage
   const [history, setHistory] = useState<RewardHistory[]>(() => {
@@ -54,15 +57,34 @@ export default function App() {
     localStorage.setItem('shamal-rewards-history', JSON.stringify(history));
   }, [history]);
 
-  // PWA Install Prompt Listener
+  // PWA Install Prompt & Update Listener
   useEffect(() => {
-    const handler = (e: any) => {
+    const installHandler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
       setShowInstallBtn(true);
     };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    window.addEventListener('beforeinstallprompt', installHandler);
+
+    // Check for Service Worker updates
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        // This fires when the service worker controlling the page changes
+        // We can trigger a reload here or notify the user
+        // But usually, we want to wait for the user to confirm reload
+      });
+      
+      // Poll for updates manually occasionally
+      const interval = setInterval(() => {
+        navigator.serviceWorker.ready.then(registration => {
+          registration.update();
+        });
+      }, 60 * 60 * 1000); // Check every hour
+      
+      return () => clearInterval(interval);
+    }
+
+    return () => window.removeEventListener('beforeinstallprompt', installHandler);
   }, []);
 
   const handleInstallClick = async () => {
@@ -73,6 +95,10 @@ export default function App() {
       setShowInstallBtn(false);
     }
     setDeferredPrompt(null);
+  };
+
+  const reloadPage = () => {
+    window.location.reload();
   };
 
   const totalStars = history.reduce((acc, curr) => acc + curr.stars, 0);
@@ -181,6 +207,19 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden bg-gradient-to-br from-pink-100 via-purple-100 to-teal-50 font-tajawal">
       
+      {/* Update Notification Toast */}
+      {updateAvailable && (
+        <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-50 animate-pop">
+          <button 
+            onClick={reloadPage}
+            className="bg-black/80 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 backdrop-blur-md border border-white/20"
+          >
+            <RefreshCw size={18} className="animate-spin" />
+            <span>تحديث جديد متاح! اضغطي للتحديث</span>
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <header className="glass-panel sticky top-0 z-50 px-3 py-4 shadow-md transition-all duration-300">
         <div className="relative flex items-center justify-between w-full">
@@ -308,6 +347,10 @@ export default function App() {
                           الرؤية : متعلم ريادي تنمية مستدامة
                           <Sparkles size={16} className="text-pink-500 animate-pulse"/>
                        </p>
+                  </div>
+                  <div className="flex justify-center items-center gap-2 text-pink-700/70 text-[10px]">
+                     <Info size={12} />
+                     <span>الإصدار {APP_VERSION}</span>
                   </div>
                   <div className="inline-block px-4 py-1 bg-pink-100/50 rounded-full">
                     <p className="text-pink-700 text-xs font-bold">

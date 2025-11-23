@@ -1,5 +1,6 @@
+
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { X, SwitchCamera, AlertCircle, Sparkles, Settings2, Star, Zap, Wand2, Crown, Cat, Flower2, Glasses, Rabbit, Brain, Rocket, Heart, Sliders, Timer, Smile, Eye, Sun, Feather } from 'lucide-react';
+import { X, SwitchCamera, AlertCircle, Sparkles, Settings2, Star, Zap, Wand2, Crown, Cat, Flower2, Glasses, Rabbit, Brain, Rocket, Heart, Sliders, Timer, Smile, Eye, Sun, Feather, Rainbow } from 'lucide-react';
 import { analyzeStudentImage } from '../services/geminiService';
 import { AnalysisStatus, RewardResponse, GradeLevel, TaskType } from '../types';
 import { RewardCard } from './RewardCard';
@@ -144,6 +145,9 @@ const playFilterSound = (filterId: FilterType) => {
       case 'wings':
         playChord([523.25, 783.99, 1046.50, 1567.98], 'sine', 0.8, 0.2); // Ethereal C Major
         break;
+      case 'rainbow':
+        playChord([523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 987.77], 'sine', 0.2, 0.05); // C Major scale run
+        break;
       default:
         playTone(400 + Math.random() * 200, 'sine', 0.1);
     }
@@ -151,10 +155,11 @@ const playFilterSound = (filterId: FilterType) => {
 };
 
 // --- Filter Definitions ---
-type FilterType = 'none' | 'cat' | 'bunny' | 'princess' | 'butterfly' | 'flowers' | 'glasses' | 'smart' | 'bee' | 'hero' | 'galaxy' | 'love' | 'eyes' | 'sun' | 'wings';
+type FilterType = 'none' | 'cat' | 'bunny' | 'princess' | 'butterfly' | 'flowers' | 'glasses' | 'smart' | 'bee' | 'hero' | 'galaxy' | 'love' | 'eyes' | 'sun' | 'wings' | 'rainbow';
 
 const FILTERS: { id: FilterType; name: string; icon: React.ReactNode; color: string }[] = [
   { id: 'none', name: 'بدون', icon: <X size={14} />, color: 'bg-gray-600' },
+  { id: 'rainbow', name: 'قوس قزح', icon: <Rainbow size={14} />, color: 'bg-indigo-400' },
   { id: 'wings', name: 'ملاك', icon: <Feather size={14} />, color: 'bg-cyan-400' },
   { id: 'sun', name: 'شمس', icon: <Sun size={14} />, color: 'bg-yellow-500' },
   { id: 'princess', name: 'أميرة', icon: <Crown size={14} />, color: 'bg-pink-600' },
@@ -394,8 +399,23 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({ onClose, onReward 
     
     if (video.videoWidth === 0) return;
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    // --- HIGH QUALITY CAPTURE: 1080px ---
+    const MAX_DIMENSION = 1080;
+    let width = video.videoWidth;
+    let height = video.videoHeight;
+
+    if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+      if (width > height) {
+        height = Math.round((height * MAX_DIMENSION) / width);
+        width = MAX_DIMENSION;
+      } else {
+        width = Math.round((width * MAX_DIMENSION) / height);
+        height = MAX_DIMENSION;
+      }
+    }
+
+    canvas.width = width;
+    canvas.height = height;
     
     const ctx = canvas.getContext('2d');
     if (ctx) {
@@ -406,6 +426,7 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({ onClose, onReward 
       
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
+      // High quality (0.8) for better visuals
       const base64Image = canvas.toDataURL('image/jpeg', 0.8);
       setCapturedImage(base64Image);
 
@@ -415,7 +436,10 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({ onClose, onReward 
         if (!isMounted.current) return;
 
         if (result.detected) {
-          const effectiveStars = result.stars > 0 ? result.stars : starRange.min;
+          let effectiveStars = result.stars;
+          if (effectiveStars < starRange.min) effectiveStars = starRange.min;
+          if (effectiveStars > starRange.max) effectiveStars = starRange.max;
+
           setRewardData({ ...result, stars: effectiveStars });
           
           setStatus(AnalysisStatus.DETECTED); 
@@ -427,17 +451,17 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({ onClose, onReward 
              if (isMounted.current) setStatus(prev => prev === AnalysisStatus.DETECTED ? AnalysisStatus.SUCCESS : prev);
           }, 1500);
         } else {
+          // Soft failure
           playErrorSound();
           setStatus(AnalysisStatus.ERROR);
           setErrorMsg(result.message || "لم يتم اكتشاف طالبة أو عمل بوضوح.");
-          setCapturedImage(null);
         }
       } catch (e) {
         if (isMounted.current) {
+          console.error(e);
           playErrorSound();
           setStatus(AnalysisStatus.ERROR);
           setErrorMsg("خطأ في النظام، يرجى المحاولة مرة أخرى");
-          setCapturedImage(null);
         }
       }
     }
@@ -538,6 +562,57 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({ onClose, onReward 
             
             <div className="absolute bottom-24 w-full text-center">
                <span className="bg-yellow-400/90 text-yellow-900 px-6 py-2 rounded-full font-black text-xl shadow-xl border-2 border-white/50">إشراقة الصباح!</span>
+            </div>
+          </>
+        )}
+
+        {activeFilter === 'rainbow' && (
+          <>
+            <FaceGuide />
+            {/* Rainbow Arc */}
+            <div className="absolute top-[15%] left-1/2 -translate-x-1/2 w-[140%] h-[50vh] opacity-70 pointer-events-none z-0 animate-pulse-slow">
+              <svg viewBox="0 0 300 150" className="w-full h-full drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">
+                <defs>
+                  <linearGradient id="rainbowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                     <stop offset="0%" stopColor="rgba(255,0,0,0.5)" />
+                     <stop offset="16%" stopColor="rgba(255,165,0,0.5)" />
+                     <stop offset="32%" stopColor="rgba(255,255,0,0.5)" />
+                     <stop offset="48%" stopColor="rgba(0,128,0,0.5)" />
+                     <stop offset="64%" stopColor="rgba(0,0,255,0.5)" />
+                     <stop offset="80%" stopColor="rgba(75,0,130,0.5)" />
+                     <stop offset="100%" stopColor="rgba(238,130,238,0.5)" />
+                  </linearGradient>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                    <feMerge>
+                      <feMergeNode in="coloredBlur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                </defs>
+                <path d="M 20 150 A 130 130 0 0 1 280 150" fill="none" stroke="url(#rainbowGrad)" strokeWidth="30" strokeLinecap="round" filter="url(#glow)" />
+              </svg>
+            </div>
+            
+            {/* Shimmering particles */}
+            {[...Array(15)].map((_, i) => (
+               <div 
+                 key={i}
+                 className="absolute text-white/80 animate-twinkle"
+                 style={{
+                   left: `${Math.random() * 100}%`,
+                   top: `${Math.random() * 60}%`,
+                   animationDuration: `${2 + Math.random() * 3}s`,
+                   animationDelay: `${Math.random() * 2}s`,
+                   fontSize: `${0.5 + Math.random()}rem`
+                 }}
+               >
+                 ✨
+               </div>
+             ))}
+
+            <div className="absolute bottom-24 w-full text-center">
+               <span className="bg-indigo-500/80 text-white px-6 py-2 rounded-full font-black text-xl shadow-xl border-2 border-white/30">ألوان الفرح</span>
             </div>
           </>
         )}
@@ -986,7 +1061,7 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({ onClose, onReward 
         {status === AnalysisStatus.ERROR && (
            <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center z-50 p-8 text-center">
              <AlertCircle size={48} className="text-red-500 mb-4" />
-             <p className="text-white font-bold mb-2">عذراً</p>
+             <p className="text-white font-bold mb-2">تنبيه</p>
              <p className="text-gray-300 text-sm mb-6">{errorMsg}</p>
              <button onClick={resetScanner} className="bg-white text-black px-8 py-2 rounded-full font-bold hover:bg-gray-200 transition-colors">حاول مرة أخرى</button>
            </div>
@@ -1188,4 +1263,4 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({ onClose, onReward 
       `}</style>
     </div>
   );
-};
+}
