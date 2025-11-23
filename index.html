@@ -15,9 +15,15 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // Polyfill for process.env to prevent ReferenceErrors in browser
-      window.process = window.process || { env: { API_KEY: '' } };
+      // Robust Polyfill for process.env
+      try {
+        window.process = window.process || {};
+        window.process.env = window.process.env || {};
+        // Ensure API_KEY exists to prevent undefined access
+        if (!window.process.env.API_KEY) window.process.env.API_KEY = '';
+      } catch(e) { console.error("Polyfill error", e); }
       
+      // Tailwind Config
       tailwind.config = {
         theme: {
           extend: {
@@ -43,11 +49,10 @@
       html, body {
         height: 100%;
         overflow: hidden; /* Prevent bounce scrolling on iOS */
-        background-color: #000; /* Better transition for fullscreen apps */
+        background-color: #fce7f3; /* Default bg */
       }
       body {
         font-family: 'Tajawal', sans-serif;
-        background-color: #fce7f3; /* pink-100 */
         overscroll-behavior: none;
         -webkit-tap-highlight-color: transparent;
       }
@@ -57,29 +62,64 @@
         -webkit-backdrop-filter: blur(12px);
         border: 1px solid rgba(255, 255, 255, 0.5);
       }
-      /* Hide scrollbar for Chrome, Safari and Opera */
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      /* Hide scrollbar for IE, Edge and Firefox */
-      .no-scrollbar {
-        -ms-overflow-style: none;  /* IE and Edge */
-        scrollbar-width: none;  /* Firefox */
-      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      
       @keyframes float {
         0% { transform: translateY(0px); }
         50% { transform: translateY(-10px); }
         100% { transform: translateY(0px); }
       }
-      .animate-float {
-        animation: float 3s ease-in-out infinite;
-      }
+      .animate-float { animation: float 3s ease-in-out infinite; }
+      
       @keyframes popIn {
         0% { transform: scale(0.5); opacity: 0; }
         100% { transform: scale(1); opacity: 1; }
       }
-      .animate-pop {
-        animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      .animate-pop { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+      /* Loading Screen Styles */
+      #loading-screen {
+        position: fixed;
+        inset: 0;
+        background: #fce7f3;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        transition: opacity 0.5s;
+      }
+      .loader {
+        width: 48px;
+        height: 48px;
+        border: 5px solid #db2777;
+        border-bottom-color: transparent;
+        border-radius: 50%;
+        display: inline-block;
+        box-sizing: border-box;
+        animation: rotation 1s linear infinite;
+        margin-bottom: 20px;
+      }
+      @keyframes rotation {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      /* Error Overlay */
+      #error-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.9);
+        color: white;
+        z-index: 10000;
+        padding: 20px;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        direction: ltr;
       }
     </style>
   <script type="importmap">
@@ -96,7 +136,48 @@
 </script>
 </head>
   <body>
+    <!-- Initial Loading Screen -->
+    <div id="loading-screen">
+      <div class="loader"></div>
+      <h2 style="color: #831843; font-weight: bold; margin-top: 10px;">جاري تشغيل تعزيز...</h2>
+      <p style="color: #9d174d; font-size: 12px;">مدرسة الشمال الابتدائية</p>
+    </div>
+
+    <!-- Global Error Handler Overlay -->
+    <div id="error-overlay">
+      <h2 style="color: #ef4444; font-size: 20px; margin-bottom: 10px;">Application Error</h2>
+      <pre id="error-message" style="background: #333; padding: 10px; border-radius: 8px; font-size: 12px; max-width: 100%; overflow: auto; text-align: left;"></pre>
+      <button onclick="window.location.reload()" style="margin-top: 20px; padding: 10px 20px; background: white; color: black; border: none; border-radius: 5px; font-weight: bold;">Reload App</button>
+    </div>
+
+    <script>
+      // Global Error Handler to prevent White Screen of Death
+      window.onerror = function(msg, url, line, col, error) {
+        const overlay = document.getElementById('error-overlay');
+        const msgElem = document.getElementById('error-message');
+        if (overlay && msgElem) {
+           overlay.style.display = 'flex';
+           msgElem.textContent = `${msg}\n\nAt: ${url}:${line}:${col}`;
+        }
+        return false;
+      };
+
+      // Hide loading screen when React mounts
+      const observer = new MutationObserver((mutations) => {
+        if (document.getElementById('root').children.length > 0) {
+          const loader = document.getElementById('loading-screen');
+          if (loader) {
+            loader.style.opacity = '0';
+            setTimeout(() => loader.remove(), 500);
+          }
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.getElementById('root'), { childList: true });
+    </script>
+
     <div id="root"></div>
+
     <script>
       // Register Service Worker for PWA functionality
       if ('serviceWorker' in navigator) {
@@ -104,7 +185,6 @@
           navigator.serviceWorker.register('./sw.js')
             .then((registration) => {
               console.log('ServiceWorker registration successful');
-              
               // Check for updates periodically
               setInterval(() => {
                 registration.update();

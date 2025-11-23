@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'shamal-rewards-v10';
+const CACHE_NAME = 'shamal-rewards-v11';
 const ICON_URL = 'https://cdn-icons-png.flaticon.com/512/2903/2903556.png';
 
 // List of assets to pre-cache
@@ -16,7 +16,8 @@ const CACHE_DOMAINS = [
   'aistudiocdn.com',
   'fonts.googleapis.com',
   'fonts.gstatic.com',
-  'cdn-icons-png.flaticon.com'
+  'cdn-icons-png.flaticon.com',
+  'esm.run'
 ];
 
 self.addEventListener('install', (event) => {
@@ -71,7 +72,7 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
-          const isAllowedDomain = CACHE_DOMAINS.some(d => url.hostname === d);
+          const isAllowedDomain = CACHE_DOMAINS.some(d => url.hostname === d || url.hostname.endsWith(d));
           if (isLocal || isAllowedDomain) {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {

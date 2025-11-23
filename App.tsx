@@ -33,7 +33,7 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
-  const APP_VERSION = "2.2.0";
+  const APP_VERSION = "2.2.1";
   
   // Initialize history from localStorage
   const [history, setHistory] = useState<RewardHistory[]>(() => {

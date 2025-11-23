@@ -38,6 +38,23 @@ const getFallbackMessage = (type: TaskType): string => {
   return messages[Math.floor(Math.random() * messages.length)];
 };
 
+// Safe way to get API Key without crashing in browser
+const getApiKey = (): string | undefined => {
+  try {
+    // Check global process (Polyfilled or Node)
+    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+      return process.env.API_KEY;
+    }
+    // Check window.process explicitly
+    if (typeof window !== 'undefined' && (window as any).process?.env?.API_KEY) {
+      return (window as any).process.env.API_KEY;
+    }
+  } catch (e) {
+    console.warn("Failed to read API Key from environment", e);
+  }
+  return undefined;
+};
+
 // Fallback logic extracted to be reused
 const runSimulation = async (
   grade: GradeLevel,
@@ -75,10 +92,12 @@ export const analyzeStudentImage = async (
 ): Promise<RewardResponse> => {
   
   try {
-    // 1. Check for API Key
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) {
-      console.warn("No API Key found, running simulation mode.");
+    // 1. Check for API Key Safely
+    const apiKey = getApiKey();
+    
+    // Validate API Key format (simple check to avoid sending empty/garbage to API)
+    if (!apiKey || apiKey.length < 10 || apiKey.trim() === '') {
+      console.warn("No valid API Key found. Using Simulation Mode.");
       return runSimulation(grade, taskType, starRange);
     }
 
@@ -149,6 +168,7 @@ export const analyzeStudentImage = async (
 
   } catch (error) {
     console.error("Gemini Analysis Failed, falling back to simulation:", error);
+    // Even if Gemini fails, we don't want to disappoint the student, so we fall back
     return runSimulation(grade, taskType, starRange);
   }
 };
