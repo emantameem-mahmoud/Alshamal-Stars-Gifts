@@ -15,6 +15,9 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+      // Polyfill for process.env to prevent ReferenceErrors in browser
+      window.process = window.process || { env: { API_KEY: '' } };
+      
       tailwind.config = {
         theme: {
           extend: {
@@ -86,7 +89,8 @@
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
-    "canvas-confetti": "https://aistudiocdn.com/canvas-confetti@^1.9.4"
+    "canvas-confetti": "https://aistudiocdn.com/canvas-confetti@^1.9.4",
+    "@google/genai": "https://esm.run/@google/genai"
   }
 }
 </script>
