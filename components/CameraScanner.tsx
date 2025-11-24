@@ -1,9 +1,9 @@
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { X, SwitchCamera, AlertCircle, Sparkles, Settings2, Star, Zap, Wand2, Crown, Cat, Flower2, Glasses, Rabbit, Brain, Rocket, Heart, Sliders, Timer, Smile, Eye, Sun, Feather, Rainbow } from 'lucide-react';
-import { analyzeStudentImage } from '../services/geminiService';
-import { AnalysisStatus, RewardResponse, GradeLevel, TaskType } from '../types';
-import { RewardCard } from './RewardCard';
+import { analyzeStudentImage } from '../services/geminiService.ts';
+import { AnalysisStatus, RewardResponse, GradeLevel, TaskType } from '../types.ts';
+import { RewardCard } from './RewardCard.tsx';
 
 interface CameraScannerProps {
   onClose: () => void;

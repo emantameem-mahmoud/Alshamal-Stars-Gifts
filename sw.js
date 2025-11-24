@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'shamal-rewards-v11';
+const CACHE_NAME = 'shamal-rewards-v14';
 const ICON_URL = 'https://cdn-icons-png.flaticon.com/512/2903/2903556.png';
 
 // List of assets to pre-cache

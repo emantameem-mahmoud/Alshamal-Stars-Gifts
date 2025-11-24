@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { RewardResponse, GradeLevel, TaskType } from "../types";
+import { RewardResponse, GradeLevel, TaskType } from "../types.ts";
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 

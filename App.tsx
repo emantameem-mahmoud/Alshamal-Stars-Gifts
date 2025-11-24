@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
-import { CameraScanner } from './components/CameraScanner';
-import { HistoryItem } from './components/HistoryItem';
+import { CameraScanner } from './components/CameraScanner.tsx';
+import { HistoryItem } from './components/HistoryItem.tsx';
 import { Trophy, Star, Sparkles, Camera, Trash2, History, Medal, Award, Crown, Zap, LayoutGrid, Home as HomeIcon, Download, Info, RefreshCw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -33,7 +32,7 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
-  const APP_VERSION = "2.2.1";
+  const APP_VERSION = "2.3.1";
   
   // Initialize history from localStorage
   const [history, setHistory] = useState<RewardHistory[]>(() => {
@@ -228,8 +227,8 @@ export default function App() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="glass-panel sticky top-0 z-40 px-3 py-3 shadow-sm shrink-0">
+      {/* Header with Safe Area support */}
+      <header className="glass-panel sticky top-0 z-40 px-3 py-3 shadow-sm shrink-0 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div className="relative flex items-center justify-between w-full">
           {/* Logo */}
           <div className="bg-gradient-to-br from-pink-500 to-purple-600 p-2 rounded-full text-white shadow-md shrink-0 z-10">
@@ -237,7 +236,7 @@ export default function App() {
           </div>
 
           {/* Title */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 pt-[env(safe-area-inset-top)]">
             <h1 className="font-black text-pink-900 text-lg sm:text-xl leading-tight text-center w-full px-12 truncate">
               مدرسة الشمال الابتدائية
             </h1>
@@ -394,7 +393,7 @@ export default function App() {
       </main>
 
       {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-white/60 px-6 pt-2 pb-safe flex justify-around items-end z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] h-[85px]">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-white/60 px-6 pt-2 pb-safe flex justify-around items-end z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] h-[calc(85px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)]">
         <button 
           onClick={() => setAppState(AppState.HOME)}
           className={`flex flex-col items-center gap-1 pb-4 transition-all ${appState === AppState.HOME ? 'text-pink-600' : 'text-gray-400'}`}
