@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'shamal-rewards-v15';
+const CACHE_NAME = 'shamal-rewards-v16';
 const ICON_URL = 'https://cdn-icons-png.flaticon.com/512/2903/2903556.png';
 
 // List of assets to pre-cache
@@ -24,7 +24,12 @@ self.addEventListener('install', (event) => {
   self.skipWaiting(); // Force activation immediately
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_URLS);
+      // Use addAll loosely to prevent failure if one file is missing
+      return Promise.all(
+        PRECACHE_URLS.map(url => 
+          cache.add(url).catch(err => console.warn('Failed to precache:', url, err))
+        )
+      );
     })
   );
 });
@@ -47,17 +52,30 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   const isLocal = url.origin === self.location.origin;
-  // Network First for HTML/JS/TSX to avoid stuck 404s during dev
-  const isCode = event.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('.tsx') || url.pathname.endsWith('.ts') || url.pathname.endsWith('.js');
+  
+  // Skip caching for API calls or non-GET requests
+  if (event.request.method !== 'GET') return;
+
+  // Network First for HTML and Code to ensure updates
+  const isCode = event.request.mode === 'navigate' || 
+                 url.pathname.endsWith('.html') || 
+                 url.pathname.endsWith('.js') || 
+                 url.pathname.endsWith('.tsx') || 
+                 url.pathname.endsWith('.ts');
 
   if (isLocal && isCode) {
     event.respondWith(
       fetch(event.request)
         .then((networkResponse) => {
-          return caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, networkResponse.clone());
-            return networkResponse;
+          // Verify response is valid before caching
+          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+             return networkResponse;
+          }
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
           });
+          return networkResponse;
         })
         .catch(() => {
           return caches.match(event.request);
@@ -70,9 +88,11 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
+        // Only cache valid responses (200 OK)
         if (networkResponse && networkResponse.status === 200) {
           const isAllowedDomain = CACHE_DOMAINS.some(d => url.hostname === d || url.hostname.endsWith(d));
-          if (isLocal || isAllowedDomain) {
+          // Cache local files (basic) or allowed CORS domains
+          if (isLocal || (isAllowedDomain && networkResponse.type === 'cors')) {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, responseToCache);
@@ -80,8 +100,9 @@ self.addEventListener('fetch', (event) => {
           }
         }
         return networkResponse;
-      }).catch(() => {
+      }).catch((e) => {
         // Network failed
+        console.warn("Fetch failed", e);
       });
 
       return cachedResponse || fetchPromise;

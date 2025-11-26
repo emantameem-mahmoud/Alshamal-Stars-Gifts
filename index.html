@@ -138,7 +138,9 @@
     "canvas-confetti": "https://aistudiocdn.com/canvas-confetti@^1.9.4",
     "@google/genai": "https://esm.run/@google/genai",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/"
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "vite": "https://aistudiocdn.com/vite@^7.2.4",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
   }
 }
 </script>
@@ -174,20 +176,35 @@
     <div id="root"></div>
 
     <script>
-      // Service Worker Logic
+      // Robust Service Worker Registration/Cleanup Logic
       if ('serviceWorker' in navigator) {
-        // First, unregister any old SWs to ensure fresh start if issues persist
+        // We start by checking for existing registrations to potentially clear broken ones
         navigator.serviceWorker.getRegistrations().then(function(registrations) {
-           for(let registration of registrations) {
-              // Optional: Unregister strictly if you want to force clean slate
-              // registration.unregister();
-           }
+           // If we are in a state where the app is broken (e.g., 404s), we might want to unregister first
+           // But for normal operation, we just register.
+           // To be safe against the 404 cache loop, we rely on the new SW version.
         });
 
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw.js')
             .then((registration) => {
               console.log('ServiceWorker registration successful');
+              // Check for updates
+              registration.onupdatefound = () => {
+                const installingWorker = registration.installing;
+                if (installingWorker == null) {
+                  return;
+                }
+                installingWorker.onstatechange = () => {
+                  if (installingWorker.state === 'installed') {
+                    if (navigator.serviceWorker.controller) {
+                      console.log('New content is available; please refresh.');
+                    } else {
+                      console.log('Content is cached for offline use.');
+                    }
+                  }
+                };
+              };
             })
             .catch((err) => {
               console.log('ServiceWorker registration failed: ', err);
