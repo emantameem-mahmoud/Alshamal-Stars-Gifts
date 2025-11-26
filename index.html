@@ -22,7 +22,6 @@
         
         // ---------------------------------------------------------
         // هام: إذا لم يعمل المفتاح، يمكنك وضعه هنا بين علامتي التنصيص
-        // مثال: window.process.env.API_KEY = "AIzaSy...";
         // ---------------------------------------------------------
         if (!window.process.env.API_KEY) {
            window.process.env.API_KEY = ''; 
@@ -175,8 +174,34 @@
     <div id="root"></div>
 
     <script>
+      // Service Worker Logic
+      if ('serviceWorker' in navigator) {
+        // First, unregister any old SWs to ensure fresh start if issues persist
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+           for(let registration of registrations) {
+              // Optional: Unregister strictly if you want to force clean slate
+              // registration.unregister();
+           }
+        });
+
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then((registration) => {
+              console.log('ServiceWorker registration successful');
+            })
+            .catch((err) => {
+              console.log('ServiceWorker registration failed: ', err);
+            });
+        });
+      }
+    </script>
+    
+    <!-- MAIN ENTRY POINT -->
+    <script type="module" src="./index.tsx"></script>
+
+    <script>
       // Hide loading screen when React mounts
-      // MOVED BELOW #root to ensure element exists
+      // Must be after script tag to ensure execution order
       try {
         const rootElement = document.getElementById('root');
         if (rootElement) {
@@ -194,27 +219,5 @@
         }
       } catch(e) { console.warn("Observer init failed", e); }
     </script>
-
-    <script>
-      // Register Service Worker for PWA functionality
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
-            .then((registration) => {
-              console.log('ServiceWorker registration successful');
-              // Check for updates periodically
-              setInterval(() => {
-                registration.update();
-              }, 60 * 60 * 1000); // Every hour
-            })
-            .catch((err) => {
-              console.log('ServiceWorker registration failed: ', err);
-            });
-        });
-      }
-    </script>
-    
-    <!-- MAIN ENTRY POINT: This was missing! -->
-    <script type="module" src="./index.tsx"></script>
   </body>
 </html>

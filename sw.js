@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'shamal-rewards-v14';
+const CACHE_NAME = 'shamal-rewards-v15';
 const ICON_URL = 'https://cdn-icons-png.flaticon.com/512/2903/2903556.png';
 
 // List of assets to pre-cache
@@ -47,10 +47,10 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   const isLocal = url.origin === self.location.origin;
-  const isHTML = event.request.mode === 'navigate' || url.pathname.endsWith('.html');
+  // Network First for HTML/JS/TSX to avoid stuck 404s during dev
+  const isCode = event.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('.tsx') || url.pathname.endsWith('.ts') || url.pathname.endsWith('.js');
 
-  // STRATEGY 1: Network First for HTML/App Shell (Ensures updates are seen immediately)
-  if (isLocal && isHTML) {
+  if (isLocal && isCode) {
     event.respondWith(
       fetch(event.request)
         .then((networkResponse) => {
@@ -66,8 +66,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // STRATEGY 2: Stale-While-Revalidate for Assets (Libraries, Icons, etc.)
-  // Serves from cache for speed, then updates cache in background
+  // Stale-While-Revalidate for Assets
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
@@ -82,7 +81,7 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       }).catch(() => {
-        // Network failed, nothing to do
+        // Network failed
       });
 
       return cachedResponse || fetchPromise;
