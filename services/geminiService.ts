@@ -75,12 +75,19 @@ const runSimulation = async (
   }
   
   const stars = possibleStars[Math.floor(Math.random() * possibleStars.length)];
+  
+  // Randomize bounding box slightly to simulate detection
+  // Format: [ymin, xmin, ymax, xmax] (0-1000)
+  const ymin = 150 + Math.random() * 100;
+  const xmin = 150 + Math.random() * 100;
+  const height = 400 + Math.random() * 200;
+  const width = 400 + Math.random() * 200;
 
   return {
     detected: true,
     message: getFallbackMessage(taskType),
     stars: stars,
-    boundingBox: [200, 200, 800, 800] 
+    boundingBox: [Math.floor(ymin), Math.floor(xmin), Math.floor(ymin + height), Math.floor(xmin + width)] 
   };
 };
 

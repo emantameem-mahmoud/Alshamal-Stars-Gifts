@@ -390,7 +390,9 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({ onClose, onReward 
     if (navigator.vibrate) navigator.vibrate(100);
 
     setFlash(true);
-    setTimeout(() => setFlash(false), 200);
+    setTimeout(() => {
+        if (isMounted.current) setFlash(false);
+    }, 200);
 
     setStatus(AnalysisStatus.ANALYZING);
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Star, CheckCircle, Sparkles, Edit3 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -82,6 +82,7 @@ const playConfirmSound = () => {
 export const RewardCard: React.FC<RewardCardProps> = ({ message, stars: initialStars, onDismiss }) => {
   const [stars, setStars] = useState(initialStars);
   const [editableMessage, setEditableMessage] = useState(message);
+  const animationFrameRef = useRef<number>();
 
   useEffect(() => {
     setStars(initialStars);
@@ -136,10 +137,17 @@ export const RewardCard: React.FC<RewardCardProps> = ({ message, stars: initialS
       });
 
       if (Date.now() < end) {
-        requestAnimationFrame(frame);
+        animationFrameRef.current = requestAnimationFrame(frame);
       }
     };
     frame();
+
+    // Cleanup animation frame on unmount
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
   }, []);
 
   const handleConfirm = () => {
